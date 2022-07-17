@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Authenticating User</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+</head>
+<body>
+  <button onclick="connect()">Login with Web3</button>
+
+  <script type="text/javascript">
+    let account = null;
+    let accessToken = null;
+    const connect = async () => {
+      if (window.ethereum) {
+        await window.ethereum.send('eth_requestAccounts')
+        window.w3 = new Web3(window.ethereum)
+        var accounts = await w3.eth.getAccounts()
+        account = accounts[0];
+
+        accessToken = await authenticate()
+        
+        let opts = {
+          method: 'GET',
+          headers: {
+            'Content-Type': "application/json",
+            'Authorization': `Bearer ${accessToken}`
+          }
+        }
+
+        let res = await fetch(`/secret`, opts)
+        alert(await res.text())
+      }
+    }
+
+    const authenticate = async () => {
+      let res = await fetch(`/nonce?address=${account}`)
+      let resBody = await res.json()
+
+      let signature = await w3.eth.personal.sign(resBody.message, account)
+
+      let opts = {
+        method: 'POST',
+        headers: {
+          'Content-Type': "application/json",
+          'Authorization': `Bearer ${resBody.tempToken}`
+        }
+      }
+
+      res = await fetch(`/verify?signature=${signature}`, opts)
+      resBody = await res.json()
+
+      console.log(resBody)
+      return resBody.token
+    }
+  </script>
+</body>
+</html>
